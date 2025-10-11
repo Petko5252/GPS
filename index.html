@@ -25,7 +25,6 @@
         body { font-family: 'Inter', sans-serif; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
         .loader { border: 4px solid #f3f3f320; border-top: 4px solid #3B82F6; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #traffic-btn.active { background-color: #3B82F6; color: white; }
         #language-selector {
             -webkit-appearance: none; -moz-appearance: none; appearance: none;
             background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
@@ -101,7 +100,6 @@
     </div>
 
     <script>
-        // --- DOM Elements ---
         const dom = {
             mapContainer: document.getElementById('map'), statusText: document.getElementById('status-text'),
             searchInput: document.getElementById('search-input'), searchResults: document.getElementById('search-results'),
@@ -120,7 +118,6 @@
             selectorsContainer: document.getElementById('selectors-container')
         };
         
-        // --- State Object ---
         const state = {
             map: null, userMarker: null, routeLayer: null, destinationMarker: null, watchId: null,
             currentLocation: null, isNavigating: false, searchTimeout: null, currentTravelMode: 'driving',
@@ -164,31 +161,35 @@
                 state.currentLanguage = e.target.value;
                 if (state.destinationMarker) getRoute(state.currentLocation, state.destinationMarker.getLatLng());
             });
-
             dom.travelModeSelector.addEventListener('click', (e) => {
                 const button = e.target.closest('.travel-mode-btn');
                 if (!button || state.isNavigating || button.classList.contains('active')) return;
-
                 state.currentTravelMode = button.dataset.mode;
-                
                 dom.travelModeSelector.querySelectorAll('.travel-mode-btn').forEach(btn => {
                     btn.classList.remove('active', 'bg-blue-500', 'text-white');
                     btn.classList.add('bg-transparent', 'text-gray-600', 'dark:text-gray-300');
                 });
-                
                 button.classList.remove('bg-transparent', 'text-gray-600', 'dark:text-gray-300');
                 button.classList.add('active', 'bg-blue-500', 'text-white');
-                
                 if (state.destinationMarker) getRoute(state.currentLocation, state.destinationMarker.getLatLng());
             });
         }
         
+        // --- FIX: REWRITTEN getRoute FUNCTION WITH ROBUST ERROR HANDLING ---
         async function getRoute(start, end) {
             dom.loader.classList.remove('hidden');
             dom.statusPanel.classList.remove('hidden');
             dom.routeSummaryPanel.classList.add('hidden');
             dom.directionsContainer.classList.add('hidden');
             dom.statusText.textContent = "Calculating route...";
+
+            // Defensive check for valid coordinates
+            if (!start || typeof start.lat !== 'number' || typeof start.lng !== 'number' ||
+                !end || typeof end.lat !== 'number' || typeof end.lng !== 'number') {
+                dom.statusText.textContent = "Error: Invalid start or end location.";
+                dom.loader.classList.add('hidden');
+                return;
+            }
             
             const osrmProfiles = { driving: 'car', walking: 'foot', cycling: 'bike' };
             const profile = osrmProfiles[state.currentTravelMode] || 'car';
@@ -196,10 +197,15 @@
             
             try {
                 const response = await fetch(url);
-                if (!response.ok) throw new Error(await response.text());
+                // Try to parse JSON body even if the request failed, as OSRM provides error details
                 const data = await response.json();
-                
-                if (data.code === 'Ok' && data.routes?.length > 0) {
+
+                if (!response.ok || data.code !== 'Ok') {
+                    // Use the specific error message from the API if available
+                    throw new Error(data.message || `Server responded with status ${response.status}`);
+                }
+
+                if (data.routes?.length > 0) {
                     state.routeData = data.routes[0];
                     if (state.routeLayer) state.map.removeLayer(state.routeLayer);
                     
@@ -210,7 +216,7 @@
                     
                     const paddingOptions = {};
                     if (window.innerWidth >= 768) { // md breakpoint for desktop
-                        paddingOptions.paddingTopLeft = [400, 50]; // Account for sidebar
+                        paddingOptions.paddingTopLeft = [400, 50];
                         paddingOptions.paddingBottomRight = [50, 50];
                     } else {
                         paddingOptions.padding = [50, 50];
@@ -218,12 +224,14 @@
                     state.map.fitBounds(state.routeLayer.getBounds(), paddingOptions);
                     
                     showRouteSummary(state.routeData);
-                } else { 
-                    dom.statusText.textContent = data.message || "Could not find a route.";
+                } else {
+                    throw new Error("No route found in server response.");
                 }
             } catch (error) { 
-                console.error("Error fetching route:", error);
-                dom.statusText.textContent = "Error calculating route."; 
+                console.error("Route calculation failed:", error);
+                // Display the specific error message to the user
+                dom.statusText.textContent = `Error: ${error.message}`;
+                dom.statusPanel.classList.remove('hidden');
             }
             finally { 
                 dom.loader.classList.add('hidden'); 
@@ -246,7 +254,7 @@
             if(state.etaInterval) clearInterval(state.etaInterval);
             state.etaInterval = setInterval(() => {
                 if(state.isNavigating) updateNavigationProgress();
-            }, 10000); // Check progress every 10 seconds
+            }, 10000);
         }
 
         function endNavigation() {
@@ -270,7 +278,7 @@
             if (state.currentLocation) state.map.setView([state.currentLocation.lat, state.currentLocation.lng], 16);
         }
 
-        // --- All other utility and helper functions ---
+        // --- All other utility and helper functions (no changes needed) ---
         function loadVoices() { state.voices = speechSynthesis.getVoices(); }
         function startWatchingPosition() { const options = { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }; state.watchId = navigator.geolocation.watchPosition(onPositionUpdate, (e) => dom.statusText.textContent = "GPS signal lost.", options); }
         function onPositionUpdate(position) { const { latitude, longitude, heading } = position.coords; const newLocation = { lat: latitude, lng: longitude }; state.currentLocation = newLocation; if (!state.userMarker) { state.map.setView(newLocation, 16); const userIconHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 256 256"><path fill="#3B82F6" d="M232,128A104,104,0,0,1,38.26,169.87L25.47,225.1a16,16,0,0,1-20-20L60.13,192.31A104,104,0,1,1,232,128Z"></path></svg>`; state.userMarker = L.marker(newLocation, { icon: L.divIcon({ className: 'user-location-icon', html: userIconHTML, iconSize: [28, 28] }) }).addTo(state.map); dom.statusText.textContent = "Select a destination to begin."; } else { state.userMarker.setLatLng(newLocation); } if (heading !== null) { const iconElement = state.userMarker.getElement()?.querySelector('svg'); if (iconElement) iconElement.style.transform = `rotate(${heading}deg)`; } if (state.isNavigating) { state.map.panTo(newLocation, { animate: true }); updateNavigationProgress(); } }
