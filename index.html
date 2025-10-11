@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GPS Navigation</title>
+    
+    <!-- LeafletJS for maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- TailwindCSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Custom styles to ensure the app is full-screen and components layer correctly */
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-touch-callout: none; /* iOS Safari */
+            -webkit-user-select: none;   /* Safari */
+            -khtml-user-select: none;    /* Konqueror HTML */
+            -moz-user-select: none;      /* Old versions of Firefox */
+            -ms-user-select: none;       /* Internet Explorer/Edge */
+            user-select: none;           /* Non-prefixed version, currently supported by Chrome, Opera and Firefox */
+        }
+        #map {
+            /* The map needs to be behind everything else */
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 10;
+        }
+        .leaflet-control-zoom {
+            /* Move zoom controls to top-right */
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+        .leaflet-control-attribution {
+            /* Hide the default attribution, we will add a custom one */
+            display: none;
+        }
+        /* Custom icon for the user's location */
+        .user-location-icon {
+            background-color: #4A90E2;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            border: 3px solid white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 overflow-hidden">
+
+    <!-- The main map container -->
+    <div id="map"></div>
+
+    <!-- UI elements that float over the map -->
+    <div class="relative z-20 p-4 md:p-6 h-screen w-screen flex flex-col pointer-events-none">
+        
+        <!-- Top Panel: Status and Speed -->
+        <div class="w-full max-w-md mx-auto pointer-events-auto">
+            <div id="status-panel" class="bg-white rounded-xl shadow-lg p-4 text-center transition-all duration-300">
+                <p id="status-text" class="text-gray-700 font-medium">Initializing GPS...</p>
+            </div>
+            
+            <div id="navigation-panel" class="hidden bg-white rounded-xl shadow-lg p-4 mt-2">
+                <div class="flex justify-between items-center text-center">
+                    <div>
+                        <p class="text-sm text-gray-500">SPEED</p>
+                        <p id="speed-text" class="text-2xl font-bold text-gray-800">0 km/h</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">ETA</p>
+                        <p id="eta-text" class="text-2xl font-bold text-gray-800">--:--</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">DISTANCE</p>
+                        <p id="distance-text" class="text-2xl font-bold text-gray-800">0 km</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Panel: Directions -->
+        <div class="flex-grow flex flex-col justify-end min-h-0">
+            <div id="directions-container" class="bg-white rounded-t-xl shadow-2xl max-h-[40%] flex flex-col transition-all duration-300 pointer-events-auto translate-y-full">
+                <div class="p-4 border-b border-gray-200 flex-shrink-0">
+                    <h2 class="text-lg font-bold text-gray-800">Turn-by-Turn Directions</h2>
+                </div>
+                <div id="directions-panel" class="overflow-y-auto p-4 flex-grow">
+                    <!-- Directions will be injected here by JavaScript -->
+                </div>
+                <button id="end-nav-btn" class="bg-red-500 text-white font-bold py-3 w-full rounded-b-xl hover:bg-red-600 transition-colors flex-shrink-0">
+                    End Navigation
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM element references
+        const mapContainer = document.getElementById('map');
+        const statusPanel = document.getElementById('status-panel');
+        const statusText = document.getElementById('status-text');
+        const navigationPanel = document.getElementById('navigation-panel');
+        const speedText = document.getElementById('speed-text');
+        const etaText = document.getElementById('eta-text');
+        const distanceText = document.getElementById('distance-text');
+        const directionsContainer = document.getElementById('directions-container');
+        const directionsPanel = document.getElementById('directions-panel');
+        const endNavBtn = document.getElementById('end-nav-btn');
+
+        // App state
+        let map;
+        let userMarker;
+        let routeLayer;
+        let destinationMarker;
+        let watchId;
+        let currentLocation = null;
+        let isNavigating = false;
+
+        // Initialize the map
+        function initMap() {
+            // Check if Geolocation is supported
+            if (!navigator.geolocation) {
+                statusText.textContent = "Geolocation is not supported by your browser.";
+                return;
+            }
+
+            map = L.map(mapContainer, {
+                zoomControl: false // We use the default position but could customize
+            }).setView([51.505, -0.09], 13); // Default view
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+            statusText.textContent = "Acquiring your location...";
+            startWatchingPosition();
+            
+            map.on('click', onMapClick);
+            endNavBtn.addEventListener('click', endNavigation);
+        }
+
+        // Start tracking user's location
+        function startWatchingPosition() {
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            };
+            watchId = navigator.geolocation.watchPosition(onPositionUpdate, onPositionError, options);
+        }
+        
+        // Callback for successful position update
+        function onPositionUpdate(position) {
+            const { latitude, longitude, speed } = position.coords;
+            currentLocation = { lat: latitude, lng: longitude };
+            
+            const speedKmh = speed ? (speed * 3.6).toFixed(0) : 0;
+            speedText.textContent = `${speedKmh} km/h`;
+
+            if (!userMarker) {
+                // First location update: center map and add marker
+                map.setView(currentLocation, 16);
+                
+                const userIcon = L.divIcon({
+                    className: 'user-location-icon',
+                    iconSize: [24, 24],
+                    html: ''
+                });
+
+                userMarker = L.marker(currentLocation, { icon: userIcon }).addTo(map)
+                    .bindPopup("You are here").openPopup();
+                
+                statusText.textContent = "Tap on the map to set a destination.";
+
+            } else {
+                // Subsequent updates: move marker and map view
+                userMarker.setLatLng(currentLocation);
+                if (isNavigating) {
+                    map.panTo(currentLocation);
+                }
+            }
+        }
+        
+        // Callback for position error
+        function onPositionError(error) {
+            console.error(`Geolocation error: ${error.message} (code: ${error.code})`);
+            // The "permissions policy" error you're seeing corresponds to PERMISSION_DENIED.
+            // This happens when the document is in an iframe that lacks the 'geolocation' permission.
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    statusText.textContent = "Location access was denied. Please enable it in your browser settings and allow this page to access it.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    statusText.textContent = "Location information is currently unavailable.";
+                    break;
+                case error.TIMEOUT:
+                    statusText.textContent = "The request to get your location timed out.";
+                    break;
+                default:
+                    statusText.textContent = "An unknown error occurred while getting your location.";
+                    break;
+            }
+        }
+
+        // Handle map clicks to set destination
+        function onMapClick(e) {
+            if (isNavigating) return; // Don't set a new destination while navigating
+
+            const destination = e.latlng;
+            
+            if (destinationMarker) {
+                destinationMarker.setLatLng(destination);
+            } else {
+                destinationMarker = L.marker(destination).addTo(map)
+                    .bindPopup("Destination").openPopup();
+            }
+
+            if (currentLocation) {
+                getRoute(currentLocation, destination);
+            } else {
+                statusText.textContent = "Still waiting for your location to get a route.";
+            }
+        }
+        
+        // Fetch route from OSRM API
+        async function getRoute(start, end) {
+            statusText.textContent = "Calculating route...";
+            const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&steps=true`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.routes && data.routes.length > 0) {
+                    const route = data.routes[0];
+                    drawRoute(route.geometry.coordinates);
+                    displayDirections(route.legs[0].steps);
+                    updateNavigationInfo(route);
+                    startNavigation();
+                } else {
+                    statusText.textContent = "Could not find a route.";
+                }
+            } catch (error) {
+                console.error("Error fetching route:", error);
+                statusText.textContent = "Error calculating route.";
+            }
+        }
+        
+        // Draw the route polyline on the map
+        function drawRoute(coordinates) {
+            if (routeLayer) {
+                map.removeLayer(routeLayer);
+            }
+            
+            // OSRM returns [lng, lat], Leaflet needs [lat, lng]
+            const latLngs = coordinates.map(coord => [coord[1], coord[0]]);
+            
+            routeLayer = L.polyline(latLngs, { color: '#3B82F6', weight: 6, opacity: 0.8 }).addTo(map);
+            map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
+        }
+        
+        // Display turn-by-turn directions
+        function displayDirections(steps) {
+            directionsPanel.innerHTML = ''; // Clear previous directions
+            const instructions = steps.map(step => {
+                const distanceMeters = step.distance.toFixed(0);
+                return `<li class="py-2 border-b border-gray-100">${step.maneuver.instruction} <span class="font-semibold text-blue-600">(${distanceMeters} m)</span></li>`;
+            });
+            directionsPanel.innerHTML = `<ul class="list-none">${instructions.join('')}</ul>`;
+        }
+
+        // Update navigation metrics like ETA and distance
+        function updateNavigationInfo(route) {
+            const durationSeconds = route.duration;
+            const distanceMeters = route.distance;
+
+            const eta = new Date(Date.now() + durationSeconds * 1000);
+            etaText.textContent = eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            distanceText.textContent = `${(distanceMeters / 1000).toFixed(1)} km`;
+        }
+        
+        // Transition UI to navigation mode
+        function startNavigation() {
+            isNavigating = true;
+            statusPanel.classList.add('hidden');
+            navigationPanel.classList.remove('hidden');
+            directionsContainer.classList.remove('translate-y-full');
+            
+            if (destinationMarker) {
+                destinationMarker.closePopup();
+            }
+            userMarker.closePopup();
+        }
+
+        // Reset UI and state when navigation ends
+        function endNavigation() {
+            isNavigating = false;
+            
+            if (routeLayer) {
+                map.removeLayer(routeLayer);
+                routeLayer = null;
+            }
+            if (destinationMarker) {
+                map.removeLayer(destinationMarker);
+                destinationMarker = null;
+            }
+            
+            statusPanel.classList.remove('hidden');
+            navigationPanel.classList.add('hidden');
+            directionsContainer.classList.add('translate-y-full');
+            statusText.textContent = "Tap on the map to set a new destination.";
+            directionsPanel.innerHTML = '';
+            if (userMarker) {
+                map.fitBounds(userMarker.getLatLng().toBounds(200)); // Zoom back to user
+            }
+        }
+
+        // Initialize the app once the window loads
+        window.onload = initMap;
+
+    </script>
+</body>
+</html>
+
