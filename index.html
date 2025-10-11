@@ -159,10 +159,24 @@
             dom.travelModeSelector.addEventListener('click', (e) => {
                 const button = e.target.closest('.travel-mode-btn');
                 if (!button || state.isNavigating) return;
+                
+                // Don't do anything if the clicked button is already active
+                if (button.classList.contains('active')) return;
+
                 state.currentTravelMode = button.dataset.mode;
-                document.querySelectorAll('.travel-mode-btn').forEach(btn => btn.classList.remove('active', 'bg-blue-500', 'text-white'));
+                
+                // Update button styles robustly
+                document.querySelectorAll('.travel-mode-btn').forEach(btn => {
+                    btn.classList.remove('active', 'bg-blue-500', 'text-white');
+                    btn.classList.add('bg-transparent', 'text-gray-600', 'dark:text-gray-300');
+                });
+                
+                button.classList.remove('bg-transparent', 'text-gray-600', 'dark:text-gray-300');
                 button.classList.add('active', 'bg-blue-500', 'text-white');
-                if (state.destinationMarker) getRoute(state.currentLocation, state.destinationMarker.getLatLng());
+                
+                if (state.destinationMarker) {
+                    getRoute(state.currentLocation, state.destinationMarker.getLatLng());
+                }
             });
         }
         
@@ -307,6 +321,32 @@
             dom.distanceText.textContent = `${(remainingDistance / 1000).toFixed(1)} km`;
         }
 
+        function getInstruction(step) {
+            // OSRM provides a ready-to-use instruction string.
+            if (step.maneuver && step.maneuver.instruction) {
+                return step.maneuver.instruction;
+            }
+            
+            // Fallback for the "arrive" step which might not have an instruction.
+            if (step.maneuver && step.maneuver.type === 'arrive') {
+                let direction = step.maneuver.modifier || '';
+                if (direction) {
+                    // Make it more natural, e.g. "on your left"
+                    direction = `on your ${direction.replace('-', ' ')}`;
+                }
+                // Use the destination name if available
+                const destinationName = step.name ? `at ${step.name}` : 'at your destination';
+                // Combine and clean up the final string
+                return `You have arrived ${destinationName}, ${direction}`.trim().replace(/,$/, ''); 
+            }
+
+            // A more generic fallback if other instructions are missing.
+            const type = (step.maneuver.type || '').replace(/([A-Z])/g, ' $1').toLowerCase();
+            const modifier = step.maneuver.modifier || '';
+            const road = step.name ? `onto ${step.name}` : '';
+            return `${type} ${modifier} ${road}`.replace(/\s+/g, ' ').trim(); // Clean up extra spaces
+        }
+
         function getManeuverIcon(type, modifier) {
             const icons = {
                 'turn': { 'left': 'ph-arrow-bend-up-left', 'right': 'ph-arrow-bend-up-right', 'straight': 'ph-arrow-up' },
@@ -319,16 +359,18 @@
 
         function displayDirections(steps) {
             const firstStep = steps[0];
-            speak(`In ${Math.round(firstStep.distance)} meters, ${firstStep.maneuver.instruction}`);
+            const firstInstruction = getInstruction(firstStep);
+            speak(`In ${Math.round(firstStep.distance)} meters, ${firstInstruction}`);
             dom.nextManeuverIcon.innerHTML = getManeuverIcon(firstStep.maneuver.type, firstStep.maneuver.modifier);
             dom.nextManeuverDist.textContent = `${Math.round(firstStep.distance)} m`;
-            dom.nextManeuverText.textContent = firstStep.maneuver.instruction;
+            dom.nextManeuverText.textContent = firstInstruction;
 
             dom.directionsPanel.innerHTML = steps.map(step => {
                 const dist = step.distance > 1000 ? `${(step.distance / 1000).toFixed(1)} km` : `${step.distance.toFixed(0)} m`;
+                const instruction = getInstruction(step);
                 return `<li class="py-2 border-b border-gray-100 dark:border-gray-700 flex items-center gap-3">
                     <span class="text-2xl">${getManeuverIcon(step.maneuver.type, step.maneuver.modifier)}</span>
-                    <span class="flex-grow">${step.maneuver.instruction}</span>
+                    <span class="flex-grow">${instruction}</span>
                     <span class="font-semibold text-blue-500">${dist}</span></li>`;
             }).join('');
         }
@@ -354,4 +396,6 @@
     </script>
 </body>
 </html>
+
+
 
