@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -11,6 +11,14 @@
     
     <!-- TailwindCSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // Enable dark mode using a class
+        }
+    </script>
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,108 +26,147 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        /* Custom styles to ensure the app is full-screen and components layer correctly */
+        /* Custom styles */
         body {
             font-family: 'Inter', sans-serif;
-            -webkit-touch-callout: none; /* iOS Safari */
-            -webkit-user-select: none;   /* Safari */
-            -khtml-user-select: none;    /* Konqueror HTML */
-            -moz-user-select: none;      /* Old versions of Firefox */
-            -ms-user-select: none;       /* Internet Explorer/Edge */
-            user-select: none;           /* Non-prefixed version, currently supported by Chrome, Opera and Firefox */
+            -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none;
+            -moz-user-select: none; -ms-user-select: none; user-select: none;
         }
         #map {
-            /* The map needs to be behind everything else */
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 10;
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10;
         }
-        .leaflet-control-zoom {
-            /* Move zoom controls to top-right */
-            position: absolute;
-            top: 20px;
-            right: 20px;
-        }
-        .leaflet-control-attribution {
-            /* Hide the default attribution, we will add a custom one */
-            display: none;
-        }
-        /* Custom icon for the user's location */
+        /* Custom icon for the user's location with a heading indicator */
         .user-location-icon {
-            background-color: #4A90E2;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .user-location-icon svg {
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+            transition: transform 0.3s ease-out; /* Smooth rotation */
+        }
+        /* Loading spinner */
+        .loader {
+            border: 4px solid #f3f3f320; 
+            border-top: 4px solid #3B82F6;
             border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            border: 3px solid white;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
-<body class="bg-gray-100 overflow-hidden">
+<body class="bg-gray-100 dark:bg-gray-900 overflow-hidden">
 
-    <!-- The main map container -->
     <div id="map"></div>
 
-    <!-- UI elements that float over the map -->
-    <div class="relative z-20 p-4 md:p-6 h-screen w-screen flex flex-col pointer-events-none">
+    <!-- UI Overlay -->
+    <div class="relative z-20 h-screen w-screen flex flex-col p-4 md:p-6 gap-4 pointer-events-none">
         
-        <!-- Top Panel: Status and Speed -->
-        <div class="w-full max-w-md mx-auto pointer-events-auto">
-            <div id="status-panel" class="bg-white rounded-xl shadow-lg p-4 text-center transition-all duration-300">
-                <p id="status-text" class="text-gray-700 font-medium">Initializing GPS...</p>
-            </div>
-            
-            <div id="navigation-panel" class="hidden bg-white rounded-xl shadow-lg p-4 mt-2">
-                <div class="flex justify-between items-center text-center">
-                    <div>
-                        <p class="text-sm text-gray-500">SPEED</p>
-                        <p id="speed-text" class="text-2xl font-bold text-gray-800">0 km/h</p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-500">ETA</p>
-                        <p id="eta-text" class="text-2xl font-bold text-gray-800">--:--</p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-500">DISTANCE</p>
-                        <p id="distance-text" class="text-2xl font-bold text-gray-800">0 km</p>
-                    </div>
+        <!-- Top Search Panel -->
+        <div id="search-container" class="w-full max-w-md mx-auto pointer-events-auto">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg flex flex-col">
+                <div class="flex items-center gap-2 p-3">
+                    <i class="ph ph-magnifying-glass text-gray-400 text-xl"></i>
+                    <input type="text" id="search-input" placeholder="Search for a destination..." class="w-full bg-transparent focus:outline-none text-gray-800 dark:text-gray-200">
+                    <div id="loader" class="loader hidden"></div>
+                </div>
+                <div id="search-results" class="border-t border-gray-200 dark:border-gray-700 max-h-60 overflow-y-auto">
+                    <!-- Search results will be injected here -->
                 </div>
             </div>
         </div>
+        
+        <!-- Navigation Info Panel (Top) -->
+        <div id="navigation-panel" class="hidden w-full max-w-md mx-auto pointer-events-auto bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
+             <div class="flex justify-between items-center text-center">
+                <div>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">SPEED</p>
+                    <p id="speed-text" class="text-2xl font-bold text-gray-800 dark:text-gray-200">0 km/h</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">ETA</p>
+                    <p id="eta-text" class="text-2xl font-bold text-gray-800 dark:text-gray-200">--:--</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">DISTANCE</p>
+                    <p id="distance-text" class="text-2xl font-bold text-gray-800 dark:text-gray-200">0 km</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex-grow"></div> <!-- Spacer -->
+        
+        <!-- Floating Action Buttons (Right) -->
+        <div class="absolute right-4 md:right-6 bottom-36 flex flex-col gap-3 pointer-events-auto">
+             <button id="recenter-btn" class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 w-12 h-12 rounded-full shadow-lg flex items-center justify-center">
+                <i class="ph-bold ph-crosshair text-2xl"></i>
+            </button>
+             <button id="dark-mode-toggle" class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 w-12 h-12 rounded-full shadow-lg flex items-center justify-center">
+                <i class="ph-bold ph-sun text-2xl dark:hidden"></i>
+                <i class="ph-bold ph-moon text-2xl hidden dark:inline"></i>
+            </button>
+        </div>
 
-        <!-- Bottom Panel: Directions -->
-        <div class="flex-grow flex flex-col justify-end min-h-0">
-            <div id="directions-container" class="bg-white rounded-t-xl shadow-2xl max-h-[40%] flex flex-col transition-all duration-300 pointer-events-auto translate-y-full">
-                <div class="p-4 border-b border-gray-200 flex-shrink-0">
-                    <h2 class="text-lg font-bold text-gray-800">Turn-by-Turn Directions</h2>
-                </div>
-                <div id="directions-panel" class="overflow-y-auto p-4 flex-grow">
-                    <!-- Directions will be injected here by JavaScript -->
-                </div>
-                <button id="end-nav-btn" class="bg-red-500 text-white font-bold py-3 w-full rounded-b-xl hover:bg-red-600 transition-colors flex-shrink-0">
-                    End Navigation
+        <!-- Bottom Panel -->
+        <div class="flex flex-col items-center pointer-events-auto">
+            <!-- Travel Mode Selector -->
+            <div id="travel-mode-selector" class="bg-white dark:bg-gray-800 p-2 rounded-full shadow-lg flex gap-2 mb-4">
+                <button data-mode="driving" class="travel-mode-btn active bg-blue-500 text-white rounded-full px-4 py-2 flex items-center gap-2">
+                    <i class="ph-bold ph-car"></i> <span>Driving</span>
                 </button>
+                 <button data-mode="walking" class="travel-mode-btn bg-transparent text-gray-600 dark:text-gray-300 rounded-full px-4 py-2 flex items-center gap-2">
+                    <i class="ph-bold ph-person"></i> <span>Walking</span>
+                </button>
+                 <button data-mode="cycling" class="travel-mode-btn bg-transparent text-gray-600 dark:text-gray-300 rounded-full px-4 py-2 flex items-center gap-2">
+                    <i class="ph-bold ph-bicycle"></i> <span>Cycling</span>
+                </button>
+            </div>
+            
+            <!-- Status/Directions Panel -->
+            <div id="bottom-panel" class="w-full max-w-2xl mx-auto">
+                 <div id="status-panel" class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 text-center">
+                    <p id="status-text" class="text-gray-700 dark:text-gray-300 font-medium">Initializing GPS...</p>
+                </div>
+                 <div id="directions-container" class="hidden bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-h-[40vh] flex flex-col">
+                    <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+                        <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200">Turn-by-Turn Directions</h2>
+                    </div>
+                    <div id="directions-panel" class="overflow-y-auto p-4 flex-grow text-gray-700 dark:text-gray-300"></div>
+                    <button id="end-nav-btn" class="bg-red-500 text-white font-bold py-3 w-full rounded-b-xl hover:bg-red-600 transition-colors flex-shrink-0">
+                        End Navigation
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // DOM element references
+        // DOM Elements
         const mapContainer = document.getElementById('map');
-        const statusPanel = document.getElementById('status-panel');
         const statusText = document.getElementById('status-text');
+        const searchInput = document.getElementById('search-input');
+        const searchResults = document.getElementById('search-results');
+        const loader = document.getElementById('loader');
+        const recenterBtn = document.getElementById('recenter-btn');
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
         const navigationPanel = document.getElementById('navigation-panel');
         const speedText = document.getElementById('speed-text');
         const etaText = document.getElementById('eta-text');
         const distanceText = document.getElementById('distance-text');
+        const statusPanel = document.getElementById('status-panel');
         const directionsContainer = document.getElementById('directions-container');
         const directionsPanel = document.getElementById('directions-panel');
         const endNavBtn = document.getElementById('end-nav-btn');
+        const travelModeSelector = document.getElementById('travel-mode-selector');
 
-        // App state
+        // App State
         let map;
         let userMarker;
         let routeLayer;
@@ -127,125 +174,195 @@
         let watchId;
         let currentLocation = null;
         let isNavigating = false;
+        let searchTimeout;
+        let currentTravelMode = 'driving';
+        let lightTileLayer, darkTileLayer;
 
-        // Initialize the map
+        // --- MAP INITIALIZATION ---
         function initMap() {
-            // Check if Geolocation is supported
             if (!navigator.geolocation) {
-                statusText.textContent = "Geolocation is not supported by your browser.";
+                statusText.textContent = "Geolocation is not supported.";
                 return;
             }
 
-            map = L.map(mapContainer, {
-                zoomControl: false // We use the default position but could customize
-            }).setView([51.505, -0.09], 13); // Default view
-
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
-            
+            map = L.map(mapContainer, { zoomControl: false }).setView([51.505, -0.09], 13);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+            // Tile Layers for light and dark mode
+            lightTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19, attribution: '© OpenStreetMap'
+            });
+            darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 19, attribution: '© OpenStreetMap, © CartoDB'
+            });
+
+            // Set initial theme
+            if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                darkTileLayer.addTo(map);
+            } else {
+                lightTileLayer.addTo(map);
+            }
 
             statusText.textContent = "Acquiring your location...";
             startWatchingPosition();
-            
-            map.on('click', onMapClick);
-            endNavBtn.addEventListener('click', endNavigation);
+            setupEventListeners();
         }
 
-        // Start tracking user's location
-        function startWatchingPosition() {
-            const options = {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            };
-            watchId = navigator.geolocation.watchPosition(onPositionUpdate, onPositionError, options);
+        // --- EVENT LISTENERS ---
+        function setupEventListeners() {
+            map.on('click', onMapClick);
+            endNavBtn.addEventListener('click', endNavigation);
+            recenterBtn.addEventListener('click', () => {
+                if (currentLocation) map.setView(currentLocation, 16, { animate: true });
+            });
+            darkModeToggle.addEventListener('click', toggleDarkMode);
+            searchInput.addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(performSearch, 500);
+            });
+            travelModeSelector.addEventListener('click', (e) => {
+                const button = e.target.closest('.travel-mode-btn');
+                if (button) {
+                    currentTravelMode = button.dataset.mode;
+                    document.querySelectorAll('.travel-mode-btn').forEach(btn => btn.classList.remove('active', 'bg-blue-500', 'text-white'));
+                    button.classList.add('active', 'bg-blue-500', 'text-white');
+                    // If navigating, recalculate route
+                    if (isNavigating && currentLocation && destinationMarker) {
+                        getRoute(currentLocation, destinationMarker.getLatLng());
+                    }
+                }
+            });
         }
         
-        // Callback for successful position update
+        // --- GEOLOCATION ---
+        function startWatchingPosition() {
+            const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
+            watchId = navigator.geolocation.watchPosition(onPositionUpdate, onPositionError, options);
+        }
+
         function onPositionUpdate(position) {
-            const { latitude, longitude, speed } = position.coords;
+            const { latitude, longitude, speed, heading } = position.coords;
             currentLocation = { lat: latitude, lng: longitude };
             
             const speedKmh = speed ? (speed * 3.6).toFixed(0) : 0;
             speedText.textContent = `${speedKmh} km/h`;
 
             if (!userMarker) {
-                // First location update: center map and add marker
+                // First location update
                 map.setView(currentLocation, 16);
-                
+                const userIconHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="#3B82F6" viewBox="0 0 256 256"><path d="M232,128A104,104,0,0,1,38.26,169.87L25.47,225.1a16,16,0,0,1-20-20L60.13,192.31A104,104,0,1,1,232,128Z"></path></svg>`;
                 const userIcon = L.divIcon({
                     className: 'user-location-icon',
-                    iconSize: [24, 24],
-                    html: ''
+                    html: userIconHTML,
+                    iconSize: [28, 28],
                 });
-
-                userMarker = L.marker(currentLocation, { icon: userIcon }).addTo(map)
-                    .bindPopup("You are here").openPopup();
-                
-                statusText.textContent = "Tap on the map to set a destination.";
-
+                userMarker = L.marker(currentLocation, { icon: userIcon }).addTo(map);
+                statusText.textContent = "Tap map or search to set destination.";
             } else {
-                // Subsequent updates: move marker and map view
                 userMarker.setLatLng(currentLocation);
-                if (isNavigating) {
-                    map.panTo(currentLocation);
-                }
+                if (isNavigating) map.panTo(currentLocation, { animate: true });
+            }
+
+            // Rotate user icon if heading is available
+             if (heading !== null) {
+                const iconElement = userMarker.getElement().querySelector('svg');
+                if(iconElement) iconElement.style.transform = `rotate(${heading}deg)`;
             }
         }
         
-        // Callback for position error
         function onPositionError(error) {
-            console.error(`Geolocation error: ${error.message} (code: ${error.code})`);
-            // The "permissions policy" error you're seeing corresponds to PERMISSION_DENIED.
-            // This happens when the document is in an iframe that lacks the 'geolocation' permission.
-            switch (error.code) {
-                case error.PERMISSION_DENIED:
-                    statusText.textContent = "Location access was denied. Please enable it in your browser settings and allow this page to access it.";
-                    break;
-                case error.POSITION_UNAVAILABLE:
-                    statusText.textContent = "Location information is currently unavailable.";
-                    break;
-                case error.TIMEOUT:
-                    statusText.textContent = "The request to get your location timed out.";
-                    break;
-                default:
-                    statusText.textContent = "An unknown error occurred while getting your location.";
-                    break;
+            console.error(`Geolocation error: ${error.message}`);
+            statusText.textContent = "Could not get your location. Please enable GPS.";
+        }
+
+        // --- UI & THEME ---
+        function toggleDarkMode() {
+            document.documentElement.classList.toggle('dark');
+            if (document.documentElement.classList.contains('dark')) {
+                localStorage.setItem('theme', 'dark');
+                map.removeLayer(lightTileLayer);
+                darkTileLayer.addTo(map);
+            } else {
+                localStorage.setItem('theme', 'light');
+                map.removeLayer(darkTileLayer);
+                lightTileLayer.addTo(map);
             }
         }
 
-        // Handle map clicks to set destination
-        function onMapClick(e) {
-            if (isNavigating) return; // Don't set a new destination while navigating
+        // --- SEARCH ---
+        async function performSearch() {
+            const query = searchInput.value;
+            if (query.length < 3) {
+                searchResults.innerHTML = '';
+                return;
+            }
+            loader.classList.remove('hidden');
 
-            const destination = e.latlng;
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                displaySearchResults(data);
+            } catch (error) {
+                console.error("Search error:", error);
+                searchResults.innerHTML = `<div class="p-3 text-red-500">Search failed.</div>`;
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+
+        function displaySearchResults(results) {
+            if (results.length === 0) {
+                searchResults.innerHTML = `<div class="p-3 text-gray-500">No results found.</div>`;
+                return;
+            }
+            searchResults.innerHTML = results.map(result => `
+                <div class="p-3 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-lat="${result.lat}" data-lon="${result.lon}">
+                    <p class="font-semibold text-gray-800 dark:text-gray-200">${result.display_name.split(',')[0]}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">${result.display_name.substring(result.display_name.indexOf(',') + 1)}</p>
+                </div>
+            `).join('');
             
+            searchResults.querySelectorAll('div[data-lat]').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    const lat = e.currentTarget.dataset.lat;
+                    const lon = e.currentTarget.dataset.lon;
+                    setDestination({ lat, lng: lon });
+                    searchInput.value = '';
+                    searchResults.innerHTML = '';
+                });
+            });
+        }
+        
+        // --- ROUTING & NAVIGATION ---
+        function onMapClick(e) {
+            if (isNavigating) return;
+            setDestination(e.latlng);
+        }
+
+        function setDestination(latlng) {
             if (destinationMarker) {
-                destinationMarker.setLatLng(destination);
+                destinationMarker.setLatLng(latlng);
             } else {
-                destinationMarker = L.marker(destination).addTo(map)
-                    .bindPopup("Destination").openPopup();
+                destinationMarker = L.marker(latlng).addTo(map).bindPopup("Destination").openPopup();
             }
 
             if (currentLocation) {
-                getRoute(currentLocation, destination);
+                getRoute(currentLocation, latlng);
             } else {
-                statusText.textContent = "Still waiting for your location to get a route.";
+                statusText.textContent = "Waiting for location to get route.";
             }
         }
         
-        // Fetch route from OSRM API
         async function getRoute(start, end) {
+            loader.classList.remove('hidden');
             statusText.textContent = "Calculating route...";
-            const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&steps=true`;
+            const url = `https://router.project-osrm.org/route/v1/${currentTravelMode}/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&steps=true`;
 
             try {
                 const response = await fetch(url);
                 const data = await response.json();
-                
                 if (data.routes && data.routes.length > 0) {
                     const route = data.routes[0];
                     drawRoute(route.geometry.coordinates);
@@ -258,82 +375,59 @@
             } catch (error) {
                 console.error("Error fetching route:", error);
                 statusText.textContent = "Error calculating route.";
+            } finally {
+                 loader.classList.add('hidden');
             }
         }
         
-        // Draw the route polyline on the map
         function drawRoute(coordinates) {
-            if (routeLayer) {
-                map.removeLayer(routeLayer);
-            }
-            
-            // OSRM returns [lng, lat], Leaflet needs [lat, lng]
+            if (routeLayer) map.removeLayer(routeLayer);
             const latLngs = coordinates.map(coord => [coord[1], coord[0]]);
-            
             routeLayer = L.polyline(latLngs, { color: '#3B82F6', weight: 6, opacity: 0.8 }).addTo(map);
-            map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
+            map.fitBounds(routeLayer.getBounds(), { padding: [100, 100] });
         }
         
-        // Display turn-by-turn directions
         function displayDirections(steps) {
-            directionsPanel.innerHTML = ''; // Clear previous directions
-            const instructions = steps.map(step => {
-                const distanceMeters = step.distance.toFixed(0);
-                return `<li class="py-2 border-b border-gray-100">${step.maneuver.instruction} <span class="font-semibold text-blue-600">(${distanceMeters} m)</span></li>`;
-            });
-            directionsPanel.innerHTML = `<ul class="list-none">${instructions.join('')}</ul>`;
+            directionsPanel.innerHTML = steps.map(step => {
+                const dist = step.distance > 1000 ? `${(step.distance / 1000).toFixed(1)} km` : `${step.distance.toFixed(0)} m`;
+                return `<li class="py-2 border-b border-gray-100 dark:border-gray-700">${step.maneuver.instruction} <span class="font-semibold text-blue-500">(${dist})</span></li>`;
+            }).join('');
         }
 
-        // Update navigation metrics like ETA and distance
         function updateNavigationInfo(route) {
             const durationSeconds = route.duration;
             const distanceMeters = route.distance;
-
             const eta = new Date(Date.now() + durationSeconds * 1000);
             etaText.textContent = eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
             distanceText.textContent = `${(distanceMeters / 1000).toFixed(1)} km`;
         }
         
-        // Transition UI to navigation mode
         function startNavigation() {
             isNavigating = true;
-            statusPanel.classList.add('hidden');
+            search-container.classList.add('hidden');
             navigationPanel.classList.remove('hidden');
-            directionsContainer.classList.remove('translate-y-full');
-            
-            if (destinationMarker) {
-                destinationMarker.closePopup();
-            }
-            userMarker.closePopup();
+            statusPanel.classList.add('hidden');
+            directionsContainer.classList.remove('hidden');
+            travelModeSelector.classList.add('hidden');
+            if (destinationMarker) destinationMarker.closePopup();
         }
 
-        // Reset UI and state when navigation ends
         function endNavigation() {
             isNavigating = false;
+            if (routeLayer) map.removeLayer(routeLayer);
+            if (destinationMarker) map.removeLayer(destinationMarker);
+            routeLayer = destinationMarker = null;
             
-            if (routeLayer) {
-                map.removeLayer(routeLayer);
-                routeLayer = null;
-            }
-            if (destinationMarker) {
-                map.removeLayer(destinationMarker);
-                destinationMarker = null;
-            }
-            
-            statusPanel.classList.remove('hidden');
+            search-container.classList.remove('hidden');
             navigationPanel.classList.add('hidden');
-            directionsContainer.classList.add('translate-y-full');
-            statusText.textContent = "Tap on the map to set a new destination.";
-            directionsPanel.innerHTML = '';
-            if (userMarker) {
-                map.fitBounds(userMarker.getLatLng().toBounds(200)); // Zoom back to user
-            }
+            statusPanel.classList.remove('hidden');
+            directionsContainer.classList.add('hidden');
+            travelModeSelector.classList.remove('hidden');
+            statusText.textContent = "Tap map or search to set destination.";
+            if (userMarker) map.fitBounds(userMarker.getLatLng().toBounds(200));
         }
 
-        // Initialize the app once the window loads
         window.onload = initMap;
-
     </script>
 </body>
 </html>
