@@ -271,17 +271,32 @@
             const url = `https://router.project-osrm.org/route/v1/${state.currentTravelMode}/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&steps=true`;
             try {
                 const response = await fetch(url);
+                if (!response.ok) {
+                    // Handle server errors (like 500, 404)
+                    const errorText = await response.text();
+                    throw new Error(`Routing service failed: ${response.status} ${errorText}`);
+                }
+
                 const data = await response.json();
-                if (data.routes && data.routes.length > 0) {
+                
+                if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
                     state.routeData = data.routes[0];
                     if (state.routeLayer) state.map.removeLayer(state.routeLayer);
                     const latLngs = state.routeData.geometry.coordinates.map(coord => [coord[1], coord[0]]);
                     state.routeLayer = L.polyline(latLngs, { color: '#3B82F6', weight: 6, opacity: 0.8 }).addTo(state.map);
                     state.map.fitBounds(state.routeLayer.getBounds(), { padding: [100, 100] });
                     showRouteSummary(state.routeData);
-                } else { dom.statusText.textContent = "Could not find a route."; }
-            } catch (error) { dom.statusText.textContent = "Error calculating route."; }
-            finally { dom.loader.classList.add('hidden'); }
+                } else { 
+                    // Handle cases where OSRM returns a valid response but no route
+                    dom.statusText.textContent = data.message || "Could not find a route. Try a different travel mode.";
+                }
+            } catch (error) { 
+                console.error("Error fetching route:", error);
+                dom.statusText.textContent = "Error calculating route. Please check connection."; 
+            }
+            finally { 
+                dom.loader.classList.add('hidden'); 
+            }
         }
         
         function showRouteSummary(route) {
@@ -396,6 +411,7 @@
     </script>
 </body>
 </html>
+
 
 
 
