@@ -30,73 +30,82 @@
             background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
             background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.5em 1.5em; padding-right: 2.5rem;
         }
+        .leaflet-control-container { z-index: 30 !important; }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 overflow-hidden">
-
-    <div id="map" class="w-screen h-screen z-10"></div>
-
-    <div class="absolute inset-0 z-20 h-screen w-screen flex flex-col p-4 md:p-6 gap-4 pointer-events-none">
+    
+    <div class="w-screen h-screen flex flex-col md:flex-row">
         
-        <div id="search-container" class="w-full max-w-md mx-auto pointer-events-auto">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg flex flex-col">
-                <div class="flex items-center gap-2 p-3">
-                    <i class="ph ph-magnifying-glass text-gray-400 text-xl"></i>
-                    <input type="text" id="search-input" placeholder="Search for a destination..." class="w-full bg-transparent focus:outline-none text-gray-800 dark:text-gray-200">
-                    <div id="loader" class="loader hidden"></div>
+        <div id="sidebar" class="order-2 md:order-1 w-full md:w-96 md:h-screen bg-gray-100 dark:bg-gray-900 flex flex-col p-4 gap-4 shadow-lg md:shadow-none z-30">
+            <div id="search-container" class="w-full pointer-events-auto">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg flex flex-col">
+                    <div class="flex items-center gap-2 p-3">
+                        <i class="ph ph-magnifying-glass text-gray-400 text-xl"></i>
+                        <input type="text" id="search-input" placeholder="Search for a destination..." class="w-full bg-transparent focus:outline-none text-gray-800 dark:text-gray-200">
+                        <div id="loader" class="loader hidden"></div>
+                    </div>
+                    <div id="search-results" class="border-t border-gray-200 dark:border-gray-700 max-h-60 overflow-y-auto"></div>
                 </div>
-                <div id="search-results" class="border-t border-gray-200 dark:border-gray-700 max-h-60 overflow-y-auto"></div>
+            </div>
+
+            <div class="flex-grow md:hidden"></div>
+
+            <div id="sidebar-content" class="w-full pointer-events-auto flex flex-col gap-4 md:flex-grow md:overflow-y-auto">
+                <div id="selectors-container" class="bg-white dark:bg-gray-800 p-2 rounded-xl shadow-lg flex flex-col sm:flex-row gap-2">
+                    <div id="travel-mode-selector" class="flex-grow bg-gray-100 dark:bg-gray-700 p-1 rounded-full flex gap-1">
+                        <button data-mode="driving" class="travel-mode-btn active w-full bg-blue-500 text-white rounded-full p-2 flex justify-center items-center gap-2"><i class="ph-bold ph-car text-xl"></i><span class="hidden sm:inline">Driving</span></button>
+                        <button data-mode="walking" class="travel-mode-btn w-full bg-transparent text-gray-600 dark:text-gray-300 rounded-full p-2 flex justify-center items-center gap-2"><i class="ph-bold ph-person text-xl"></i><span class="hidden sm:inline">Walking</span></button>
+                        <button data-mode="cycling" class="travel-mode-btn w-full bg-transparent text-gray-600 dark:text-gray-300 rounded-full p-2 flex justify-center items-center gap-2"><i class="ph-bold ph-bicycle text-xl"></i><span class="hidden sm:inline">Cycling</span></button>
+                    </div>
+                    <select id="language-selector" class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-medium p-2 pl-3 rounded-full shadow-inner focus:outline-none">
+                        <option value="en">English</option><option value="de">Deutsch</option><option value="fr">Français</option><option value="es">Español</option><option value="it">Italiano</option>
+                    </select>
+                </div>
+
+                 <div id="status-panel" class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 text-center"><p id="status-text" class="text-gray-700 dark:text-gray-300 font-medium">Initializing GPS...</p></div>
+                 <div id="route-summary-panel" class="hidden bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 flex flex-col gap-4">
+                      <div>
+                          <p class="text-2xl font-bold text-gray-800 dark:text-gray-200" id="summary-duration">-- min</p>
+                          <p class="text-gray-500 dark:text-gray-400" id="summary-distance">-- km</p>
+                      </div>
+                      <button id="start-nav-btn" class="bg-blue-500 text-white font-bold py-3 w-full rounded-lg hover:bg-blue-600">Start</button>
+                 </div>
+                 <div id="directions-container" class="hidden bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-h-[40vh] md:max-h-full md:flex-1 flex flex-col">
+                     <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
+                        <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200">Directions</h2>
+                        <button id="mute-btn" title="Toggle Voice" class="text-gray-700 dark:text-gray-200 w-10 h-10 rounded-full flex items-center justify-center"><i id="mute-icon" class="ph-bold ph-speaker-high text-2xl"></i></button>
+                     </div>
+                     <div id="directions-panel" class="overflow-y-auto p-4 flex-grow text-gray-700 dark:text-gray-300"></div>
+                     <button id="end-nav-btn" class="bg-red-500 text-white font-bold py-3 w-full rounded-b-xl hover:bg-red-600">End Navigation</button>
+                 </div>
             </div>
         </div>
-        
-        <div id="navigation-panel" class="hidden w-full max-w-md mx-auto pointer-events-auto bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
-             <div class="flex items-center gap-4">
-                 <div id="next-maneuver-icon" class="text-blue-500 text-4xl"></div>
-                 <div class="flex-grow">
-                     <p id="next-maneuver-dist" class="text-xl font-bold text-gray-800 dark:text-gray-200">...</p>
-                     <p id="next-maneuver-text" class="text-gray-600 dark:text-gray-400">...</p>
-                 </div>
-                 <div id="eta-distance" class="text-right">
-                     <p id="eta-text" class="text-xl font-bold text-gray-800 dark:text-gray-200">--:--</p>
-                     <p id="distance-text" class="text-gray-600 dark:text-gray-400">0 km</p>
-                 </div>
-             </div>
-        </div>
-        
-        <div class="flex-grow"></div> <div class="absolute right-4 md:right-6 bottom-4 md:bottom-6 flex flex-col gap-3 pointer-events-auto">
-             <button id="recenter-btn" title="Recenter Map" class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 w-12 h-12 rounded-full shadow-lg flex items-center justify-center"><i class="ph-bold ph-crosshair text-2xl"></i></button>
-             <button id="dark-mode-toggle" title="Toggle Theme" class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 w-12 h-12 rounded-full shadow-lg flex items-center justify-center"><i class="ph-bold ph-sun text-2xl dark:hidden"></i><i class="ph-bold ph-moon text-2xl hidden dark:inline"></i></button>
-        </div>
 
-        <div id="bottom-panel-container" class="w-full max-w-2xl mx-auto md:mx-0 md:max-w-none md:absolute md:top-24 md:left-6 md:w-96 pointer-events-auto flex flex-col gap-4">
-            <div id="selectors-container" class="bg-white dark:bg-gray-800 p-2 rounded-xl shadow-lg flex flex-col sm:flex-row gap-2">
-                <div id="travel-mode-selector" class="flex-grow bg-gray-100 dark:bg-gray-700 p-1 rounded-full flex gap-1">
-                    <button data-mode="driving" class="travel-mode-btn active w-full bg-blue-500 text-white rounded-full p-2 flex justify-center items-center gap-2"><i class="ph-bold ph-car text-xl"></i><span class="hidden sm:inline">Driving</span></button>
-                    <button data-mode="walking" class="travel-mode-btn w-full bg-transparent text-gray-600 dark:text-gray-300 rounded-full p-2 flex justify-center items-center gap-2"><i class="ph-bold ph-person text-xl"></i><span class="hidden sm:inline">Walking</span></button>
-                    <button data-mode="cycling" class="travel-mode-btn w-full bg-transparent text-gray-600 dark:text-gray-300 rounded-full p-2 flex justify-center items-center gap-2"><i class="ph-bold ph-bicycle text-xl"></i><span class="hidden sm:inline">Cycling</span></button>
-                </div>
-                <select id="language-selector" class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-medium p-2 pl-3 rounded-full shadow-inner focus:outline-none">
-                    <option value="en">English</option><option value="de">Deutsch</option><option value="fr">Français</option><option value="es">Español</option><option value="it">Italiano</option>
-                </select>
-            </div>
+        <main class="order-1 md:order-2 flex-grow h-full w-full relative">
+            <div id="map" class="absolute inset-0 z-10"></div>
             
-             <div id="status-panel" class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 text-center"><p id="status-text" class="text-gray-700 dark:text-gray-300 font-medium">Initializing GPS...</p></div>
-             <div id="route-summary-panel" class="hidden bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 flex flex-col gap-4">
-                  <div>
-                      <p class="text-2xl font-bold text-gray-800 dark:text-gray-200" id="summary-duration">-- min</p>
-                      <p class="text-gray-500 dark:text-gray-400" id="summary-distance">-- km</p>
-                  </div>
-                  <button id="start-nav-btn" class="bg-blue-500 text-white font-bold py-3 w-full rounded-lg hover:bg-blue-600">Start</button>
-             </div>
-             <div id="directions-container" class="hidden bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-h-[40vh] md:max-h-[55vh] flex flex-col">
-                 <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
-                    <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200">Directions</h2>
-                    <button id="mute-btn" title="Toggle Voice" class="text-gray-700 dark:text-gray-200 w-10 h-10 rounded-full flex items-center justify-center"><i id="mute-icon" class="ph-bold ph-speaker-high text-2xl"></i></button>
-                 </div>
-                 <div id="directions-panel" class="overflow-y-auto p-4 flex-grow text-gray-700 dark:text-gray-300"></div>
-                 <button id="end-nav-btn" class="bg-red-500 text-white font-bold py-3 w-full rounded-b-xl hover:bg-red-600">End Navigation</button>
-             </div>
-        </div>
+            <div class="relative z-20 h-full w-full flex flex-col p-4 md:p-6 gap-4 pointer-events-none">
+                <div id="navigation-panel" class="hidden w-full max-w-md mx-auto pointer-events-auto bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
+                     <div class="flex items-center gap-4">
+                         <div id="next-maneuver-icon" class="text-blue-500 text-4xl"></div>
+                         <div class="flex-grow">
+                             <p id="next-maneuver-dist" class="text-xl font-bold text-gray-800 dark:text-gray-200">...</p>
+                             <p id="next-maneuver-text" class="text-gray-600 dark:text-gray-400">...</p>
+                         </div>
+                         <div id="eta-distance" class="text-right">
+                             <p id="eta-text" class="text-xl font-bold text-gray-800 dark:text-gray-200">--:--</p>
+                             <p id="distance-text" class="text-gray-600 dark:text-gray-400">0 km</p>
+                         </div>
+                     </div>
+                </div>
+                
+                <div class="flex-grow"></div> <div class="absolute right-4 md:right-6 bottom-4 flex flex-col gap-3 pointer-events-auto">
+                     <button id="recenter-btn" title="Recenter Map" class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 w-12 h-12 rounded-full shadow-lg flex items-center justify-center"><i class="ph-bold ph-crosshair text-2xl"></i></button>
+                     <button id="dark-mode-toggle" title="Toggle Theme" class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 w-12 h-12 rounded-full shadow-lg flex items-center justify-center"><i class="ph-bold ph-sun text-2xl dark:hidden"></i><i class="ph-bold ph-moon text-2xl hidden dark:inline"></i></button>
+                </div>
+            </div>
+        </main>
     </div>
 
     <script>
@@ -126,24 +135,16 @@
         };
 
         function initMap() {
-            if (!navigator.geolocation) {
-                dom.statusText.textContent = "Geolocation is not supported."; return;
-            }
+            if (!navigator.geolocation) { dom.statusText.textContent = "Geolocation is not supported."; return; }
             loadVoices();
-            if (speechSynthesis.onvoiceschanged !== undefined) {
-                speechSynthesis.onvoiceschanged = loadVoices;
-            }
-
+            if (speechSynthesis.onvoiceschanged !== undefined) { speechSynthesis.onvoiceschanged = loadVoices; }
             state.map = L.map(dom.mapContainer, { zoomControl: false }).setView([42.1354, 24.7453], 13);
             L.control.zoom({ position: 'bottomright' }).addTo(state.map);
-
             state.lightTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
             state.darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, attribution: '© OSm, © CartoDB' });
-            
             if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                 document.documentElement.classList.add('dark'); state.darkTileLayer.addTo(state.map);
             } else { state.lightTileLayer.addTo(state.map); }
-            
             dom.statusText.textContent = "Acquiring your location...";
             startWatchingPosition();
             setupEventListeners();
@@ -175,7 +176,6 @@
             });
         }
         
-        // --- FIX: REWRITTEN getRoute FUNCTION WITH ROBUST ERROR HANDLING ---
         async function getRoute(start, end) {
             dom.loader.classList.remove('hidden');
             dom.statusPanel.classList.remove('hidden');
@@ -183,53 +183,42 @@
             dom.directionsContainer.classList.add('hidden');
             dom.statusText.textContent = "Calculating route...";
 
-            // Defensive check for valid coordinates
-            if (!start || typeof start.lat !== 'number' || typeof start.lng !== 'number' ||
-                !end || typeof end.lat !== 'number' || typeof end.lng !== 'number') {
+            if (!start || typeof start.lat !== 'number' || !end || typeof end.lat !== 'number') {
                 dom.statusText.textContent = "Error: Invalid start or end location.";
                 dom.loader.classList.add('hidden');
                 return;
             }
             
             const osrmProfiles = { driving: 'car', walking: 'foot', cycling: 'bike' };
-            const profile = osrmProfiles[state.currentTravelMode] || 'car';
-            const url = `https://router.project-osrm.org/route/v1/${profile}/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&steps=true&language=${state.currentLanguage}`;
+            const profile = osrmProfiles[state.currentTravelMode];
+            const url = `https://router.project-osrm.org/route/v1/${profile}/${end.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&steps=true&language=${state.currentLanguage}`;
             
             try {
                 const response = await fetch(url);
-                // Try to parse JSON body even if the request failed, as OSRM provides error details
                 const data = await response.json();
-
                 if (!response.ok || data.code !== 'Ok') {
-                    // Use the specific error message from the API if available
-                    throw new Error(data.message || `Server responded with status ${response.status}`);
+                    throw new Error(data.message || `Server error: ${response.status}`);
                 }
-
                 if (data.routes?.length > 0) {
                     state.routeData = data.routes[0];
                     if (state.routeLayer) state.map.removeLayer(state.routeLayer);
-                    
                     const latLngs = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
                     state.routeLatLngs = latLngs.map(ll => L.latLng(ll[0], ll[1]));
-                    
                     state.routeLayer = L.polyline(latLngs, { color: '#3B82F6', weight: 6, opacity: 0.8 }).addTo(state.map);
-                    
                     const paddingOptions = {};
-                    if (window.innerWidth >= 768) { // md breakpoint for desktop
-                        paddingOptions.paddingTopLeft = [400, 50];
+                    if (window.innerWidth >= 768) { // Desktop
+                        paddingOptions.paddingTopLeft = [384 + 24, 50]; // Sidebar width + padding, top padding
                         paddingOptions.paddingBottomRight = [50, 50];
-                    } else {
+                    } else { // Mobile
                         paddingOptions.padding = [50, 50];
                     }
                     state.map.fitBounds(state.routeLayer.getBounds(), paddingOptions);
-                    
                     showRouteSummary(state.routeData);
                 } else {
-                    throw new Error("No route found in server response.");
+                    throw new Error("No route found.");
                 }
             } catch (error) { 
                 console.error("Route calculation failed:", error);
-                // Display the specific error message to the user
                 dom.statusText.textContent = `Error: ${error.message}`;
                 dom.statusPanel.classList.remove('hidden');
             }
@@ -247,27 +236,19 @@
             dom.directionsContainer.classList.remove('hidden');
             dom.selectorsContainer.classList.add('hidden');
             if (state.destinationMarker) state.destinationMarker.setPopupContent(null);
-
             displayDirections(state.routeData.legs[0].steps);
             updateNavDisplay(state.routeData.distance, state.routeData.duration);
-            
             if(state.etaInterval) clearInterval(state.etaInterval);
-            state.etaInterval = setInterval(() => {
-                if(state.isNavigating) updateNavigationProgress();
-            }, 10000);
+            state.etaInterval = setInterval(() => { if(state.isNavigating) updateNavigationProgress(); }, 10000);
         }
 
         function endNavigation() {
             state.isNavigating = false;
             clearInterval(state.etaInterval);
             if (state.routeLayer) state.map.removeLayer(state.routeLayer);
-            if (state.destinationMarker) {
-                state.map.removeLayer(state.destinationMarker);
-                state.destinationMarker = null;
-            }
+            if (state.destinationMarker) { state.map.removeLayer(state.destinationMarker); state.destinationMarker = null; }
             state.routeData = state.routeLayer = null;
             state.routeLatLngs = [];
-            
             dom.searchContainer.classList.remove('hidden');
             dom.navigationPanel.classList.add('hidden');
             dom.directionsContainer.classList.add('hidden');
@@ -278,12 +259,11 @@
             if (state.currentLocation) state.map.setView([state.currentLocation.lat, state.currentLocation.lng], 16);
         }
 
-        // --- All other utility and helper functions (no changes needed) ---
         function loadVoices() { state.voices = speechSynthesis.getVoices(); }
         function startWatchingPosition() { const options = { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }; state.watchId = navigator.geolocation.watchPosition(onPositionUpdate, (e) => dom.statusText.textContent = "GPS signal lost.", options); }
         function onPositionUpdate(position) { const { latitude, longitude, heading } = position.coords; const newLocation = { lat: latitude, lng: longitude }; state.currentLocation = newLocation; if (!state.userMarker) { state.map.setView(newLocation, 16); const userIconHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 256 256"><path fill="#3B82F6" d="M232,128A104,104,0,0,1,38.26,169.87L25.47,225.1a16,16,0,0,1-20-20L60.13,192.31A104,104,0,1,1,232,128Z"></path></svg>`; state.userMarker = L.marker(newLocation, { icon: L.divIcon({ className: 'user-location-icon', html: userIconHTML, iconSize: [28, 28] }) }).addTo(state.map); dom.statusText.textContent = "Select a destination to begin."; } else { state.userMarker.setLatLng(newLocation); } if (heading !== null) { const iconElement = state.userMarker.getElement()?.querySelector('svg'); if (iconElement) iconElement.style.transform = `rotate(${heading}deg)`; } if (state.isNavigating) { state.map.panTo(newLocation, { animate: true }); updateNavigationProgress(); } }
         function updateNavigationProgress() { if (!state.routeLatLngs || state.routeLatLngs.length === 0) return; const userLatLng = L.latLng(state.currentLocation.lat, state.currentLocation.lng); let closestPointInfo = getClosestPointOnPolyline(userLatLng, state.routeLatLngs); let remainingDistance = Math.max(0, state.routeData.distance - closestPointInfo.distanceTraveled); const averageSpeed = state.routeData.distance / state.routeData.duration; let remainingDuration = (averageSpeed > 0) ? Math.max(0, remainingDistance / averageSpeed) : 0; updateNavDisplay(remainingDistance, remainingDuration); }
-        function getClosestPointOnPolyline(point, polyline) { let minDistance = Infinity; let closestPoint = null; let distanceTraveled = 0; let totalDistanceAlongPolyline = 0; for (let i = 0; i < polyline.length - 1; i++) { const start = polyline[i]; const end = polyline[i + 1]; const segmentDistance = start.distanceTo(end); const segmentClosestPoint = L.GeometryUtil.closest(state.map, [start, end], point); if(!segmentClosestPoint) continue; const distanceToSegment = point.distanceTo(segmentClosestPoint); if (distanceToSegment < minDistance) { minDistance = distanceToSegment; closestPoint = segmentClosestPoint; const traveledOnSegment = start.distanceTo(segmentClosestPoint); distanceTraveled = totalDistanceAlongPolyline + traveledOnSegment; } totalDistanceAlongPolyline += segmentDistance; } return { point: closestPoint, distanceTraveled: distanceTraveled }; }
+        function getClosestPointOnPolyline(point, polyline) { let minDistance = Infinity; let closestPoint = null; let distanceTraveled = 0; let totalDistanceAlongPolyline = 0; for (let i = 0; i < polyline.length - 1; i++) { const start = polyline[i]; const end = polyline[i + 1]; const segmentClosestPoint = L.GeometryUtil.closest(state.map, [start, end], point); if(!segmentClosestPoint) continue; const distanceToSegment = point.distanceTo(segmentClosestPoint); if (distanceToSegment < minDistance) { minDistance = distanceToSegment; const traveledOnSegment = start.distanceTo(segmentClosestPoint); distanceTraveled = totalDistanceAlongPolyline + traveledOnSegment; } totalDistanceAlongPolyline += start.distanceTo(end); } return { distanceTraveled: distanceTraveled }; }
         function updateNavDisplay(remainingDistance, remainingDuration) { const eta = new Date(Date.now() + remainingDuration * 1000); dom.etaText.textContent = eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); dom.distanceText.textContent = `${(remainingDistance / 1000).toFixed(1)} km`; }
         function speak(text) { if (state.isMuted || !('speechSynthesis' in window)) return; window.speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(text); utterance.lang = state.currentLanguage; const voice = state.voices.find(v => v.lang.startsWith(state.currentLanguage)); if (voice) utterance.voice = voice; window.speechSynthesis.speak(utterance); }
         function showRouteSummary(route) { dom.statusPanel.classList.add('hidden'); const durationMin = Math.round(route.duration / 60); const distanceKm = (route.distance / 1000).toFixed(1); dom.summaryDuration.textContent = `${durationMin} min`; dom.summaryDistance.textContent = `${distanceKm} km`; dom.routeSummaryPanel.classList.remove('hidden'); }
