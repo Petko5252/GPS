@@ -5,20 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>GPS Navigation</title>
     
-    <!-- LeafletJS for maps -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     
-    <!-- TailwindCSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { darkMode: 'class' }
     </script>
     
-    <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
-    <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -37,10 +33,8 @@
 
     <div id="map"></div>
 
-    <!-- UI Overlay -->
     <div class="relative z-20 h-screen w-screen flex flex-col p-4 md:p-6 gap-4 pointer-events-none">
         
-        <!-- Top Search Panel -->
         <div id="search-container" class="w-full max-w-md mx-auto pointer-events-auto">
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg flex flex-col">
                 <div class="flex items-center gap-2 p-3">
@@ -52,7 +46,6 @@
             </div>
         </div>
         
-        <!-- Top Navigation Panel -->
         <div id="navigation-panel" class="hidden w-full max-w-md mx-auto pointer-events-auto bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
              <div class="flex items-center gap-4">
                  <div id="next-maneuver-icon" class="text-blue-500 text-4xl"></div>
@@ -61,23 +54,19 @@
                      <p id="next-maneuver-text" class="text-gray-600 dark:text-gray-400">...</p>
                  </div>
                  <div id="eta-distance" class="text-right">
-                    <p id="eta-text" class="text-xl font-bold text-gray-800 dark:text-gray-200">--:--</p>
-                    <p id="distance-text" class="text-gray-600 dark:text-gray-400">0 km</p>
+                     <p id="eta-text" class="text-xl font-bold text-gray-800 dark:text-gray-200">--:--</p>
+                     <p id="distance-text" class="text-gray-600 dark:text-gray-400">0 km</p>
                  </div>
              </div>
         </div>
         
-        <div class="flex-grow"></div> <!-- Spacer -->
-        
-        <!-- Floating Action Buttons (Right) -->
-        <div class="absolute right-4 md:right-6 bottom-36 flex flex-col gap-3 pointer-events-auto">
+        <div class="flex-grow"></div> <div class="absolute right-4 md:right-6 bottom-36 flex flex-col gap-3 pointer-events-auto">
              <button id="recenter-btn" title="Recenter Map" class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 w-12 h-12 rounded-full shadow-lg flex items-center justify-center"><i class="ph-bold ph-crosshair text-2xl"></i></button>
              <button id="traffic-btn" title="Toggle Traffic" class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 w-12 h-12 rounded-full shadow-lg flex items-center justify-center"><i class="ph-bold ph-traffic-signal text-2xl"></i></button>
              <button id="mute-btn" title="Toggle Voice" class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 w-12 h-12 rounded-full shadow-lg flex items-center justify-center"><i id="mute-icon" class="ph-bold ph-speaker-high text-2xl"></i></button>
              <button id="dark-mode-toggle" title="Toggle Theme" class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 w-12 h-12 rounded-full shadow-lg flex items-center justify-center"><i class="ph-bold ph-sun text-2xl dark:hidden"></i><i class="ph-bold ph-moon text-2xl hidden dark:inline"></i></button>
         </div>
 
-        <!-- Bottom Panel -->
         <div class="flex flex-col items-center pointer-events-auto">
             <div id="travel-mode-selector" class="bg-white dark:bg-gray-800 p-2 rounded-full shadow-lg flex gap-2 mb-4">
                 <button data-mode="driving" class="travel-mode-btn active bg-blue-500 text-white rounded-full px-4 py-2 flex items-center gap-2"><i class="ph-bold ph-car"></i><span>Driving</span></button>
@@ -88,17 +77,17 @@
             <div id="bottom-panel" class="w-full max-w-2xl mx-auto">
                  <div id="status-panel" class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 text-center"><p id="status-text" class="text-gray-700 dark:text-gray-300 font-medium">Initializing GPS...</p></div>
                  <div id="route-summary-panel" class="hidden bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 flex flex-col gap-4">
-                     <div>
-                         <p class="text-2xl font-bold text-gray-800 dark:text-gray-200" id="summary-duration">-- min</p>
-                         <p class="text-gray-500 dark:text-gray-400" id="summary-distance">-- km</p>
-                     </div>
-                     <button id="start-nav-btn" class="bg-blue-500 text-white font-bold py-3 w-full rounded-lg hover:bg-blue-600">Start</button>
+                      <div>
+                          <p class="text-2xl font-bold text-gray-800 dark:text-gray-200" id="summary-duration">-- min</p>
+                          <p class="text-gray-500 dark:text-gray-400" id="summary-distance">-- km</p>
+                      </div>
+                      <button id="start-nav-btn" class="bg-blue-500 text-white font-bold py-3 w-full rounded-lg hover:bg-blue-600">Start</button>
                  </div>
                  <div id="directions-container" class="hidden bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-h-[40vh] flex flex-col">
-                    <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0"><h2 class="text-lg font-bold text-gray-800 dark:text-gray-200">Directions</h2></div>
-                    <div id="directions-panel" class="overflow-y-auto p-4 flex-grow text-gray-700 dark:text-gray-300"></div>
-                    <button id="end-nav-btn" class="bg-red-500 text-white font-bold py-3 w-full rounded-b-xl hover:bg-red-600">End Navigation</button>
-                </div>
+                     <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0"><h2 class="text-lg font-bold text-gray-800 dark:text-gray-200">Directions</h2></div>
+                     <div id="directions-panel" class="overflow-y-auto p-4 flex-grow text-gray-700 dark:text-gray-300"></div>
+                     <button id="end-nav-btn" class="bg-red-500 text-white font-bold py-3 w-full rounded-b-xl hover:bg-red-600">End Navigation</button>
+                 </div>
             </div>
         </div>
     </div>
@@ -136,8 +125,12 @@
 
             state.lightTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
             state.darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, attribution: '© OSm, © CartoDB' });
-            // NOTE: This traffic layer is for demonstration. In a real app, you would need a proper API key from a provider like HERE.
-            state.trafficLayer = L.tileLayer('https://s.S|L}.maps.ls.hereapi.com/maptile/2.1/traffic/normal.day/{z}/{x}/{y}/256/png8?apiKey={YOUR_API_KEY_HERE}'.replace('{YOUR_API_KEY_HERE}', 'k2252pCIh_m0J1aE8zP4-Yy_5w422j0eC_42yZYa-ac'));
+            
+            // DEBUG FIX: The traffic layer requires a valid API key and correct URL from a provider like HERE, TomTom, or Mapbox.
+            // The original URL was malformed. It's now initialized with a blank URL to prevent errors.
+            // To enable it, get an API key and use the provider's correct TileLayer URL.
+            // Example for HERE Maps: 'https://2.traffic.maps.ls.hereapi.com/maptile/2.1/flowtile/newest/normal.day/{z}/{x}/{y}/256/png8?apiKey={YOUR_API_KEY}'
+            state.trafficLayer = L.tileLayer(''); 
             
             if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                 document.documentElement.classList.add('dark'); state.darkTileLayer.addTo(state.map);
@@ -160,12 +153,10 @@
                 const button = e.target.closest('.travel-mode-btn');
                 if (!button || state.isNavigating) return;
                 
-                // Don't do anything if the clicked button is already active
                 if (button.classList.contains('active')) return;
 
                 state.currentTravelMode = button.dataset.mode;
                 
-                // Update button styles robustly
                 document.querySelectorAll('.travel-mode-btn').forEach(btn => {
                     btn.classList.remove('active', 'bg-blue-500', 'text-white');
                     btn.classList.add('bg-transparent', 'text-gray-600', 'dark:text-gray-300');
@@ -212,6 +203,10 @@
         }
         
         function toggleTraffic() {
+            if (!state.trafficLayer || !state.trafficLayer.options.maxZoom) { // A simple check if the layer is configured
+                alert("Traffic layer is not configured. Please add a valid TileLayer URL in the code.");
+                return;
+            }
             if (state.map.hasLayer(state.trafficLayer)) {
                 state.map.removeLayer(state.trafficLayer);
                 dom.trafficBtn.classList.remove('active');
@@ -229,7 +224,7 @@
 
         function speak(text) {
             if (state.isMuted || !('speechSynthesis' in window)) return;
-            window.speechSynthesis.cancel(); // Cancel previous utterances
+            window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             window.speechSynthesis.speak(utterance);
         }
@@ -268,11 +263,16 @@
             dom.statusText.textContent = "Calculating route...";
             dom.statusPanel.classList.remove('hidden');
             dom.routeSummaryPanel.classList.add('hidden');
-            const url = `https://router.project-osrm.org/route/v1/${state.currentTravelMode}/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&steps=true`;
+
+            // DEBUG FIX: Map the UI travel mode to the correct OSRM profile name.
+            const osrmProfiles = { driving: 'car', walking: 'foot', cycling: 'bike' };
+            const profile = osrmProfiles[state.currentTravelMode] || 'car'; // Default to car if something goes wrong.
+
+            const url = `https://router.project-osrm.org/route/v1/${profile}/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&steps=true`;
+            
             try {
                 const response = await fetch(url);
                 if (!response.ok) {
-                    // Handle server errors (like 500, 404)
                     const errorText = await response.text();
                     throw new Error(`Routing service failed: ${response.status} ${errorText}`);
                 }
@@ -287,7 +287,6 @@
                     state.map.fitBounds(state.routeLayer.getBounds(), { padding: [100, 100] });
                     showRouteSummary(state.routeData);
                 } else { 
-                    // Handle cases where OSRM returns a valid response but no route
                     dom.statusText.textContent = data.message || "Could not find a route. Try a different travel mode.";
                 }
             } catch (error) { 
@@ -309,6 +308,7 @@
         }
 
         function startNavigation() {
+            if (!state.routeData) return;
             state.isNavigating = true;
             dom.searchContainer.classList.add('hidden');
             dom.routeSummaryPanel.classList.add('hidden');
@@ -320,56 +320,74 @@
             displayDirections(state.routeData.legs[0].steps);
             state.routeData.startTime = Date.now();
             updateNavDisplay();
-            state.etaInterval = setInterval(updateNavDisplay, 5000); // Update every 5 seconds
+            state.etaInterval = setInterval(updateNavDisplay, 5000);
         }
 
         function updateNavDisplay() {
             if (!state.isNavigating || !state.routeData) return;
             const elapsedTime = (Date.now() - state.routeData.startTime) / 1000;
-            const remainingDuration = state.routeData.duration - elapsedTime;
+            const remainingDuration = Math.max(0, state.routeData.duration - elapsedTime);
             const eta = new Date(Date.now() + remainingDuration * 1000);
             dom.etaText.textContent = eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-            // This is a simplified distance calculation. A real app would recalculate based on progress.
-            const distanceTraveledRatio = elapsedTime / state.routeData.duration;
+            // Note: This is a simplified distance calculation based on time. 
+            // A more accurate method would recalculate based on the user's progress along the route polyline.
+            const distanceTraveledRatio = Math.min(1, elapsedTime / state.routeData.duration);
             const remainingDistance = state.routeData.distance * (1 - distanceTraveledRatio);
             dom.distanceText.textContent = `${(remainingDistance / 1000).toFixed(1)} km`;
         }
 
         function getInstruction(step) {
-            // OSRM provides a ready-to-use instruction string.
             if (step.maneuver && step.maneuver.instruction) {
                 return step.maneuver.instruction;
             }
             
-            // Fallback for the "arrive" step which might not have an instruction.
             if (step.maneuver && step.maneuver.type === 'arrive') {
                 let direction = step.maneuver.modifier || '';
-                if (direction) {
-                    // Make it more natural, e.g. "on your left"
-                    direction = `on your ${direction.replace('-', ' ')}`;
-                }
-                // Use the destination name if available
+                if (direction) { direction = `on your ${direction.replace('-', ' ')}`; }
                 const destinationName = step.name ? `at ${step.name}` : 'at your destination';
-                // Combine and clean up the final string
                 return `You have arrived ${destinationName}, ${direction}`.trim().replace(/,$/, ''); 
             }
 
-            // A more generic fallback if other instructions are missing.
             const type = (step.maneuver.type || '').replace(/([A-Z])/g, ' $1').toLowerCase();
             const modifier = step.maneuver.modifier || '';
             const road = step.name ? `onto ${step.name}` : '';
-            return `${type} ${modifier} ${road}`.replace(/\s+/g, ' ').trim(); // Clean up extra spaces
+            return `${type} ${modifier} ${road}`.replace(/\s+/g, ' ').trim();
         }
 
         function getManeuverIcon(type, modifier) {
+            // DEBUG FIX: Expanded icon mapping for more direction types.
             const icons = {
-                'turn': { 'left': 'ph-arrow-bend-up-left', 'right': 'ph-arrow-bend-up-right', 'straight': 'ph-arrow-up' },
-                'depart': { 'default': 'ph-navigation-arrow' }, 'arrive': { 'default': 'ph-check-circle' },
-                'fork': { 'left': 'ph-git-fork', 'right': 'ph-git-fork' },
-                'roundabout': { 'default': 'ph-radio-button' }, 'continue': { 'straight': 'ph-arrow-up' }
+                'depart': 'ph-navigation-arrow',
+                'turn': {
+                    'uturn': 'ph-arrow-u-up-left', 'sharp right': 'ph-arrow-elbow-right', 'right': 'ph-arrow-bend-up-right',
+                    'slight right': 'ph-arrow-bend-up-right', 'straight': 'ph-arrow-up', 'slight left': 'ph-arrow-bend-up-left',
+                    'left': 'ph-arrow-bend-up-left', 'sharp left': 'ph-arrow-elbow-left',
+                },
+                'fork': { 'right': 'ph-git-fork', 'left': 'ph-git-fork', 'straight': 'ph-arrow-up' },
+                'end of road': 'ph-sign-t',
+                'use lane': 'ph-arrow-line-up',
+                'merge': 'ph-arrows-merge',
+                'ramp': 'ph-arrow-up-right',
+                'roundabout': 'ph-radio-button',
+                'rotary': 'ph-radio-button',
+                'continue': 'ph-arrow-up',
+                'arrive': 'ph-check-circle',
+                'new name': 'ph-arrow-up',
+                'default': 'ph-question'
             };
-            return `<i class="ph-bold ${icons[type]?.[modifier] || icons[type]?.['default'] || 'ph-question'}"></i>`;
+            let iconClass = icons.default;
+            if (icons[type]) {
+                if (typeof icons[type] === 'string') {
+                    iconClass = icons[type];
+                } else if (typeof icons[type] === 'object' && icons[type][modifier]) {
+                    iconClass = icons[type][modifier];
+                } else if (typeof icons[type] === 'object') {
+                    // Fallback for turn/fork if specific modifier not found
+                    iconClass = icons[type]['straight'] || Object.values(icons[type])[0];
+                }
+            }
+            return `<i class="ph-bold ${iconClass}"></i>`;
         }
 
         function displayDirections(steps) {
@@ -381,12 +399,12 @@
             dom.nextManeuverText.textContent = firstInstruction;
 
             dom.directionsPanel.innerHTML = steps.map(step => {
-                const dist = step.distance > 1000 ? `${(step.distance / 1000).toFixed(1)} km` : `${step.distance.toFixed(0)} m`;
+                const dist = step.distance > 999 ? `${(step.distance / 1000).toFixed(1)} km` : `${step.distance.toFixed(0)} m`;
                 const instruction = getInstruction(step);
                 return `<li class="py-2 border-b border-gray-100 dark:border-gray-700 flex items-center gap-3">
-                    <span class="text-2xl">${getManeuverIcon(step.maneuver.type, step.maneuver.modifier)}</span>
-                    <span class="flex-grow">${instruction}</span>
-                    <span class="font-semibold text-blue-500">${dist}</span></li>`;
+                        <span class="text-2xl">${getManeuverIcon(step.maneuver.type, step.maneuver.modifier)}</span>
+                        <span class="flex-grow">${instruction}</span>
+                        <span class="font-semibold text-blue-500">${dist}</span></li>`;
             }).join('');
         }
         
@@ -404,14 +422,10 @@
             dom.travelModeSelector.classList.remove('hidden');
             dom.routeSummaryPanel.classList.add('hidden');
             dom.statusText.textContent = "Tap map or search to set destination.";
-            if (state.userMarker) state.map.fitBounds(state.userMarker.getLatLng().toBounds(200));
+            if (state.currentLocation) state.map.setView(state.currentLocation, 16);
         }
 
         window.onload = initMap;
     </script>
 </body>
 </html>
-
-
-
-
